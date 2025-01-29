@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris with Game Music & Pause</title>
+    <style>
+        body { text-align: center; background: #222; color: white; font-family: Arial, sans-serif; }
+        canvas { background: black; border: 2px solid white; }
+        #pauseText { display: none; font-size: 20px; color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Tetris Game 🎵</h1>
+    <p id="pauseText">PAUSED ⏸</p>
+    <canvas id="gameCanvas" width="300" height="600"></canvas>
+
+    <!-- Background Music -->
+    <audio id="bgMusic" src="https://www.fesliyanstudios.com/play-mp3/387" loop></audio>
+    <!-- Line Clear Sound -->
+    <audio id="clearSound" src="https://www.fesliyanstudios.com/play-mp3/449" preload="auto"></audio>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const pauseText = document.getElementById("pauseText");
+        const ROWS = 20, COLS = 10, BLOCK_SIZE = 30;
+        const board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+
+        const COLORS = ["black", "cyan", "blue", "orange", "yellow", "green", "purple", "red"];
+        const SHAPES = [
+            [], 
+            [[1, 1, 1, 1]], 
+            [[1, 1], [1, 1]], 
+            [[0, 1, 0], [1, 1, 1]], 
+            [[1, 1, 0], [0, 1, 1]], 
+            [[0, 1, 1], [1, 1, 0]], 
+            [[1, 1, 1], [0, 0, 1]], 
+            [[1, 1, 1], [1, 0, 0]]
+        ];
+
+        let currentPiece = randomPiece(), x = 3, y = 0, dropCounter = 0, lastTime = 0;
+        let isPaused = false;
+
+        function playMusic() {
+            let audio = document.getElementById("bgMusic");
+            audio.volume = 0.5;
+            if (audio.paused) audio.play();
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            let audio = document.getElementById("bgMusic");
+            pauseText.style.display = isPaused ? "block" : "none";
+            if (isPaused) {
+                audio.pause();
+            } else {
+                audio.play();
+                update();
+            }
+        }
+
+        function randomPiece() {
+            let type = Math.floor(Math.random() * 7) + 1;
+            return { shape: SHAPES[type], color: COLORS[type] };
+        }
+
+        function drawBlock(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            ctx.strokeStyle = "black";
+            ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let r = 0; r < ROWS; r++)
+                for (let c = 0; c < COLS; c++)
+                    drawBlock(c, r, COLORS[board[r][c]]);
+            currentPiece.shape.forEach((row, r) => 
+                row.forEach((val, c) => val && drawBlock(x + c, y + r, currentPiece.color)));
+        }
+
+        function collide() {
+            return currentPiece.shape.some((row, r) => 
+                row.some((val, c) => val && (board[y + r]?.[x + c] !== 0 || y + r >= ROWS)));
+        }
+
+        function merge() {
+            currentPiece.shape.forEach((row, r) => 
+                row.forEach((val, c) => val && (board[y + r][x + c] = COLORS.indexOf(currentPiece.color))));
+            clearLines();
+            currentPiece = randomPiece();
+            x = 3; y = 0;
+            if (collide()) board.forEach(row => row.fill(0)); // Game over, clear board
+        }
+
+        function clearLines() {
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (board[r].every(val => val !== 0)) {
+                    board.splice(r, 1);
+                    board.unshift(Array(COLS).fill(0));
+                    r++;
+                    playClearSound();
+                }
+            }
+        }
+
+        function playClearSound() {
+            let audio = document.getElementById("clearSound");
+            audio.currentTime = 0;
+            audio.play();
+        }
+
+        function move(dir) {
+            x += dir;
+            if (collide()) x -= dir;
+        }
+
+        function rotate() {
+            let rotated = currentPiece.shape[0].map((_, c) => currentPiece.shape.map(row => row[c])).reverse();
+            let oldShape = currentPiece.shape;
+            currentPiece.shape = rotated;
+            if (collide()) currentPiece.shape = oldShape;
+        }
+
+        function drop() {
+            y++;
+            if (collide()) {
+                y--;
+                merge();
+            }
+        }
+
+        function update(time = 0) {
+            if (isPaused) return;
+            const deltaTime = time - lastTime;
+            lastTime = time;
+            dropCounter += deltaTime;
+            if (dropCounter > 500) { drop(); dropCounter = 0; }
+            drawBoard();
+            requestAnimationFrame(update);
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowLeft") move(-1);
+            if (e.key === "ArrowRight") move(1);
+            if (e.key === "ArrowUp") rotate();
+            if (e.key === "ArrowDown") drop();
+            if (e.key.toLowerCase() === "p") togglePause();
+        });
+
+        document.addEventListener("click", playMusic);
+        document.addEventListener("keydown", playMusic);
+
+        update();
+    </script>
+</body>
+</html>
