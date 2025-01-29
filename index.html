@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tetris with Game Music & Pause</title>
+    <title>Tetris with Pauseable Music & Mobile Support</title>
     <style>
         body { text-align: center; background: #222; color: white; font-family: Arial, sans-serif; }
-        canvas { background: black; border: 2px solid white; }
+        canvas { background: black; border: 2px solid white; max-width: 100%; height: auto; }
         #pauseText { display: none; font-size: 20px; color: red; font-weight: bold; }
+        #mobileControls { display: none; margin-top: 10px; }
+        button { padding: 10px; font-size: 18px; margin: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -16,14 +18,23 @@
     <canvas id="gameCanvas" width="300" height="600"></canvas>
 
     <!-- Background Music -->
-    <audio id="bgMusic" src="https://www.fesliyanstudios.com/play-mp3/387" loop></audio>
-    <!-- Line Clear Sound -->
-    <audio id="clearSound" src="https://www.fesliyanstudios.com/play-mp3/449" preload="auto"></audio>
+    <audio id="bgMusic" src="https://www.bensound.com/bensound-music/bensound-sunny.mp3" loop></audio>
+
+    <!-- Mobile Controls -->
+    <div id="mobileControls">
+        <button onclick="move(-1)">⬅ Left</button>
+        <button onclick="rotate()">🔄 Rotate</button>
+        <button onclick="move(1)">➡ Right</button>
+        <button onclick="drop()">⬇ Drop</button>
+        <button onclick="togglePause()">⏸ Pause</button>
+    </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         const pauseText = document.getElementById("pauseText");
+        const mobileControls = document.getElementById("mobileControls");
+        const bgMusic = document.getElementById("bgMusic");
         const ROWS = 20, COLS = 10, BLOCK_SIZE = 30;
         const board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
 
@@ -40,22 +51,20 @@
         ];
 
         let currentPiece = randomPiece(), x = 3, y = 0, dropCounter = 0, lastTime = 0;
-        let isPaused = false;
+        let isPaused = false, isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
         function playMusic() {
-            let audio = document.getElementById("bgMusic");
-            audio.volume = 0.5;
-            if (audio.paused) audio.play();
+            bgMusic.volume = 0.5;
+            if (bgMusic.paused) bgMusic.play();
         }
 
         function togglePause() {
             isPaused = !isPaused;
-            let audio = document.getElementById("bgMusic");
             pauseText.style.display = isPaused ? "block" : "none";
             if (isPaused) {
-                audio.pause();
+                bgMusic.pause();
             } else {
-                audio.play();
+                bgMusic.play();
                 update();
             }
         }
@@ -100,16 +109,9 @@
                 if (board[r].every(val => val !== 0)) {
                     board.splice(r, 1);
                     board.unshift(Array(COLS).fill(0));
-                    r++;
-                    playClearSound();
+                    r++; 
                 }
             }
-        }
-
-        function playClearSound() {
-            let audio = document.getElementById("clearSound");
-            audio.currentTime = 0;
-            audio.play();
         }
 
         function move(dir) {
@@ -152,6 +154,8 @@
 
         document.addEventListener("click", playMusic);
         document.addEventListener("keydown", playMusic);
+
+        if (isMobile) mobileControls.style.display = "block"; // Show mobile controls
 
         update();
     </script>
